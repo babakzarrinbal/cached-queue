@@ -30,7 +30,7 @@ exp.push = function(...input) {
     resolve = res;
     reject = rej;
   });
-  inqueue = push({
+  inqueue.push({
     input,
     inputid,
     result,
@@ -44,7 +44,7 @@ exp.push = function(...input) {
 };
 
 var tick = async function() {
-  if (!inqueue.length || (threads && processing.length == threads)) {
+  if (!inqueue.length || (exp.threads && processing.length == exp.threads)) {
     if (exp.cachetime && resolved.length)
       resolved = resolved.filter(r => r.time + exp.cachetime <= Date.now());
     return;
@@ -59,7 +59,7 @@ var tick = async function() {
       new Promise(async res => {
         let r, e;
         try {
-          r = await worker(...newjob.input);
+          r = await exp.worker(...newjob.input);
         } catch (er) {
           e = er;
         }
@@ -73,7 +73,7 @@ var tick = async function() {
     error = pres.e;
   } else {
     try {
-      result = await worker(...newjob.input);
+      result = await exp.worker(...newjob.input);
     } catch (e) {
       error = e;
     }
@@ -96,7 +96,7 @@ var tick = async function() {
         tick();
       }, exp.retrydelay || 0);
     } else {
-      newjob.reject(e);
+      newjob.reject(error);
     }
   } else {
     newjob.resolve(result);
