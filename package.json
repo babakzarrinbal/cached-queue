@@ -1,6 +1,6 @@
 {
   "name": "cached-queue",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "singleton cache enabled queue worker",
   "main": "index.js",
   "scripts": {
