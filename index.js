@@ -12,11 +12,15 @@ var exp = {
   processing: [],
   resolved: []
 };
+
+var timeout;
 var clearresolvedtimout = () => {
-  if (exp.options.cachetime && exp.resolved.length)
-    exp.resolved = exp.resolved.filter(
-      r => r.time + exp.options.cachetime <= Date.now()
-    );
+  if (!exp.options.cachetime || !exp.resolved.length) return;
+  exp.resolved = exp.resolved.filter(
+    r => r.time + exp.options.cachetime >= Date.now()
+  );
+  if (timeout) clearTimeout(timeout);
+  if (exp.resolved.length) timeout = setTimeout(tick, exp.options.cachetime);
 };
 exp.push = function(...input) {
   let inputid = JSON.stringify(input);
@@ -48,7 +52,6 @@ exp.push = function(...input) {
     result,
     resolve,
     reject,
-    time: Date.now(),
     retry: 0,
     used: 0
   });
@@ -60,8 +63,10 @@ var tick = async function() {
   if (
     !exp.inqueue.length ||
     (exp.options.threads && exp.processing.length == exp.options.threads)
-  )
+  ) {
+    clearresolvedtimout();
     return;
+  }
 
   let result,
     error,
@@ -110,12 +115,16 @@ var tick = async function() {
 
   clearresolvedtimout();
 
-  if (exp.options.cachelength) {
-    if (exp.resolved.length >= exp.options.cachelength) {
+  if (exp.options.cachelength || exp.options.cachetime) {
+    if (
+      exp.options.cachelength &&
+      exp.resolved.length >= exp.options.cachelength
+    ) {
       exp.resolved.sort((a, b) => (a.used > b.used ? 1 : -1));
       exp.resolved.pop();
-      exp.resolved.unshift(donejob);
     }
+    donejob.time = Date.now();
+    exp.resolved.unshift(donejob);
   }
   tick();
 };
