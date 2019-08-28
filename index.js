@@ -1,19 +1,21 @@
 var exp = {
   worker: null,
-  threads: 0,
-  timeout: 0,
-  retry: 0,
-  retrydelay: 0,
-  cachetime: 0,
-  cachelength: 0,
+  options: {
+    threads: 0,
+    timeout: 0,
+    retry: 0,
+    retrydelay: 0,
+    cachetime: 0,
+    cachelength: 0
+  },
   inqueue: [],
   processing: [],
   resolved: []
 };
 var clearresolvedtimout = () => {
-  if (exp.cachetime && exp.resolved.length)
+  if (exp.options.cachetime && exp.resolved.length)
     exp.resolved = exp.resolved.filter(
-      r => r.time + exp.cachetime <= Date.now()
+      r => r.time + exp.options.cachetime <= Date.now()
     );
 };
 exp.push = function(...input) {
@@ -22,7 +24,7 @@ exp.push = function(...input) {
   // check previous queues for this inputid
   let prev;
   let checkqs = ["processing", "inqueue"];
-  if (exp.cachetime || exp.cachelength) {
+  if (exp.options.cachetime || exp.options.cachelength) {
     clearresolvedtimout();
     checkqs.unshift("resolved");
   }
@@ -57,7 +59,7 @@ exp.push = function(...input) {
 var tick = async function() {
   if (
     !exp.inqueue.length ||
-    (exp.threads && exp.processing.length == exp.threads)
+    (exp.options.threads && exp.processing.length == exp.options.threads)
   )
     return;
 
@@ -65,7 +67,7 @@ var tick = async function() {
     error,
     newjob = exp.inqueue.shift();
   exp.processing.push(newjob);
-  if (exp.timeout) {
+  if (exp.options.timeout) {
     let pres = await Promise.race([
       new Promise(async res => {
         let r, e;
@@ -77,7 +79,7 @@ var tick = async function() {
         return res({ r, e });
       }),
       new Promise(async res => () =>
-        setTimeout(() => res({ r: null, e: "timedout" }), exp.timeout)
+        setTimeout(() => res({ r: null, e: "timedout" }), exp.options.timeout)
       )
     ]);
     result = pres.r;
@@ -93,12 +95,12 @@ var tick = async function() {
   let donejob = exp.processing.find(p => p.inputid == newjob.inputid);
   exp.processing = exp.processing.filter(pj => pj.inputid != donejob.inputid);
   if (error) {
-    if (exp.retry && exp.retry > newjob.retry) {
+    if (exp.options.retry && exp.options.retry > newjob.retry) {
       newjob.retry++;
       return setTimeout(() => {
         exp.inqueue.push(newjob);
         tick();
-      }, exp.retrydelay || 0);
+      }, exp.options.retrydelay || 0);
     } else {
       newjob.reject(error);
     }
@@ -108,8 +110,8 @@ var tick = async function() {
 
   clearresolvedtimout();
 
-  if (exp.cachelength) {
-    if (exp.resolved.length >= exp.cachelength) {
+  if (exp.options.cachelength) {
+    if (exp.resolved.length >= exp.options.cachelength) {
       exp.resolved.sort((a, b) => (a.used > b.used ? 1 : -1));
       exp.resolved.pop();
       exp.resolved.unshift(donejob);
