@@ -13,7 +13,7 @@ npm install cached-queue
 
 ```javaScript
 
-var q = require('cached-queue');
+var q = require('cached-queue')();
 
 q.worker= function(input1,input2,...){}  // your worker function whatever it is
 // the following is the defaults
@@ -29,6 +29,9 @@ q.inqueue // is the array of queued jobs
 q.processing // is the array of currently processing  jobs
 q.resolved // is the array of resolved and cached jobs
 
+
+//or
+q = require('cached-queue')(function(){},options));
 q.push(input1,input2,...) // returnes a promise you can use with await or then
 
 ```
